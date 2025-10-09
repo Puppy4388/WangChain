@@ -1,0 +1,4 @@
+# 生成命令（依赖pipreqs包）：
+# pipreqs . --force --encoding=utf-8
+
+langchain==0.3.27
