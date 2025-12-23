@@ -1,72 +1,128 @@
 """
-LangChain v1 测试代码
-使用最新的 langchain-core 导入路径
+LangChain LLM 调用测试
+演示如何使用 LangChain 调用大语言模型
 """
 
-from langchain_core.prompts import PromptTemplate, ChatPromptTemplate
+import os
+
+from langchain.chat_models import init_chat_model
+from langchain_core.language_models import BaseChatModel
 from langchain_core.output_parsers import StrOutputParser
+from langchain_core.prompts import ChatPromptTemplate
 
 
-def test_prompt_template():
-    """测试 PromptTemplate"""
+def get_model(provider: str = "openai") -> BaseChatModel:
+    """
+    初始化聊天模型
+
+    Args:
+        provider: 模型提供商 ("openai", "anthropic", "google" 等)
+
+    Returns:
+        BaseChatModel: 初始化后的聊天模型
+    """
+    models = {
+        "openai": "gpt-4o-mini",
+        "anthropic": "claude-sonnet-4-5-20250929",
+    }
+    model_name = models.get(provider, "gpt-4o-mini")
+    return init_chat_model(model_name)
+
+
+def test_simple_invoke() -> None:
+    """测试简单的模型调用"""
     print("=" * 50)
-    print("测试 1: PromptTemplate")
+    print("测试 1: 简单调用")
     print("=" * 50)
 
-    # 创建简单的提示模板
-    template = "你好，{name}！今天天气如何？"
-    prompt = PromptTemplate.from_template(template)
+    model = get_model()
+    response = model.invoke("你好，请用一句话介绍你自己。")
 
-    # 格式化提示
-    result = prompt.format(name="张三")
-    print(f"格式化结果: {result}")
+    print(f"模型回复: {response.content}")
+    print(f"Token 使用: {response.response_metadata.get('token_usage', 'N/A')}")
     print()
 
 
-def test_chat_prompt_template():
-    """测试 ChatPromptTemplate (LangChain v1 推荐方式)"""
+def test_with_prompt_template() -> None:
+    """测试使用 PromptTemplate 的模型调用"""
     print("=" * 50)
-    print("测试 2: ChatPromptTemplate")
+    print("测试 2: 使用 PromptTemplate")
     print("=" * 50)
 
-    # 使用 ChatPromptTemplate - LangChain v1 推荐的方式
-    prompt = ChatPromptTemplate(
+    model = get_model()
+
+    prompt = ChatPromptTemplate.from_messages(
         [
-            ("system", "你是一个友好的助手。"),
+            ("system", "你是一个专业的{role}。请简洁地回答问题。"),
             ("user", "{question}"),
         ]
     )
 
-    # 格式化消息
-    messages = prompt.format_messages(question="今天天气怎么样？")
-    for msg in messages:
-        print(f"[{msg.type}]: {msg.content}")
+    # 使用 LCEL 链式调用
+    chain = prompt | model | StrOutputParser()
+
+    result = chain.invoke({"role": "Python 开发专家", "question": "什么是装饰器？"})
+
+    print(f"回复: {result}")
     print()
 
 
-def test_output_parser():
-    """测试 StrOutputParser"""
+def test_streaming() -> None:
+    """测试流式输出"""
     print("=" * 50)
-    print("测试 3: StrOutputParser")
+    print("测试 3: 流式输出")
     print("=" * 50)
 
-    # 使用 StrOutputParser
-    parser = StrOutputParser()
-    parsed = parser.parse("  这是一个测试文本  ")
-    print(f"解析结果: '{parsed}'")
+    model = get_model()
+
+    print("流式回复: ", end="", flush=True)
+    for chunk in model.stream("用三句话解释什么是机器学习。"):
+        print(chunk.content, end="", flush=True)
+    print("\n")
+
+
+def test_batch_invoke() -> None:
+    """测试批量调用"""
+    print("=" * 50)
+    print("测试 4: 批量调用")
+    print("=" * 50)
+
+    model = get_model()
+
+    questions = [
+        "1+1等于几？",
+        "Python 是什么？",
+        "什么是 API？",
+    ]
+
+    responses = model.batch(questions)
+
+    for q, r in zip(questions, responses):
+        print(f"Q: {q}")
+        print(f"A: {r.content}")
+        print("-" * 30)
     print()
 
 
-def test_langchain():
+def main() -> None:
     """运行所有测试"""
-    print("\n🚀 LangChain v1 功能测试\n")
+    print("\nLangChain LLM 调用测试\n")
 
-    test_prompt_template()
-    test_chat_prompt_template()
-    test_output_parser()
+    # 检查环境变量
+    if not os.environ.get("OPENAI_API_KEY"):
+        print("[警告] 未设置 OPENAI_API_KEY 环境变量")
+        print("请设置环境变量后重试:")
+        print("  Windows: set OPENAI_API_KEY=your-api-key")
+        print("  Linux/Mac: export OPENAI_API_KEY=your-api-key")
+        return
 
-    print("✅ LangChain v1 基础功能测试通过！")
+    test_simple_invoke()
+    test_with_prompt_template()
+    test_streaming()
+    test_batch_invoke()
+
+    print("所有测试完成!")
 
 
 if __name__ == "__main__":
-    test_langchain()
+    main()
