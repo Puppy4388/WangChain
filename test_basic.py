@@ -14,7 +14,6 @@ def test_prompt_template():
     print("=" * 50)
 
     # 创建简单的提示模板
-    template = "你好，{name}！今天天气如何？"
     prompt = PromptTemplate.from_template(template)
 
     # 格式化提示
