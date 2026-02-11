@@ -1,2 +1,2 @@
 langchain==1.2.0
-langchain-core==1.2.5
+langchain-core==1.2.11
